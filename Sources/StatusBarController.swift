@@ -15,7 +15,10 @@ class StatusBarController {
         if let button = statusItem?.button {
             if let resourcePath = Bundle.main.resourcePath,
                let image = NSImage(contentsOfFile: resourcePath + "/StatusBarIcon.png") {
-                button.image = image
+                let scaled = image.copy() as! NSImage
+                scaled.size = NSSize(width: 18, height: 18)
+                button.image = scaled
+                button.appearsDisabled = false
             }
             button.action = #selector(statusBarButtonClicked)
             button.target = self
