@@ -374,9 +374,10 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
     }
 
     func pasteByIndex(_ index: Int) {
-        guard index >= 0, index < store.entries.count else { return }
+        let entries = isVisible ? filteredEntries : store.entries
+        guard index >= 0, index < entries.count else { return }
 
-        let entry = store.entries[index]
+        let entry = entries[index]
         let content = entry.content
 
         let pasteboard = NSPasteboard.general
