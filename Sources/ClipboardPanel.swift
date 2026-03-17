@@ -78,13 +78,30 @@ class HoverableClipboardCell: NSTableCellView {
     }
 }
 
+class PanelSearchField: NSSearchField {
+    var onArrowDown: (() -> Void)?
+    var onArrowUp: (() -> Void)?
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 125, stringValue.isEmpty {
+            onArrowDown?()
+            return
+        }
+        if event.keyCode == 126, stringValue.isEmpty {
+            onArrowUp?()
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+
 class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
     private let store: ClipboardStore
     private let tableView = ClickableTableView()
     private let scrollView = ClickableScrollView()
     private var previousApp: NSRunningApplication?
     private let clearButton = NSButton()
-    private let searchField = NSSearchField()
+    private let searchField = PanelSearchField()
     private let regexCheckbox = NSButton(checkboxWithTitle: "Regex", target: nil, action: nil)
     private var cancellable: AnyCancellable?
     private var selectedIndex: Int = -1
@@ -187,6 +204,20 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
         searchField.target = self
         searchField.action = #selector(searchFieldChanged)
         searchField.autoresizingMask = [.width, .minYMargin]
+        searchField.onArrowDown = { [weak self] in
+            guard let self = self, !self.filteredEntries.isEmpty else { return }
+            self.selectedIndex = 0
+            self.tableView.scrollRowToVisible(self.selectedIndex)
+            self.tableView.reloadData()
+            self.makeFirstResponder(self)
+        }
+        searchField.onArrowUp = { [weak self] in
+            guard let self = self, !self.filteredEntries.isEmpty else { return }
+            self.selectedIndex = self.filteredEntries.count - 1
+            self.tableView.scrollRowToVisible(self.selectedIndex)
+            self.tableView.reloadData()
+            self.makeFirstResponder(self)
+        }
         containerView.addSubview(searchField)
 
         // Regex checkbox next to search field
