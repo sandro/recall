@@ -81,17 +81,27 @@ class HoverableClipboardCell: NSTableCellView {
 class PanelSearchField: NSSearchField {
     var onArrowDown: (() -> Void)?
     var onArrowUp: (() -> Void)?
+    var onReturn: (() -> Void)?
 
-    override func keyDown(with event: NSEvent) {
-        if event.keyCode == 125, stringValue.isEmpty {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        switch event.keyCode {
+        case 125:
             onArrowDown?()
-            return
-        }
-        if event.keyCode == 126, stringValue.isEmpty {
+            return true
+        case 126:
             onArrowUp?()
-            return
+            return true
+        default:
+            return super.performKeyEquivalent(with: event)
         }
-        super.keyDown(with: event)
+    }
+
+    override func sendAction(_ action: Selector?, to target: Any?) -> Bool {
+        if let event = NSApp.currentEvent, event.type == .keyDown, event.keyCode == 36 {
+            onReturn?()
+            return true
+        }
+        return super.sendAction(action, to: target)
     }
 }
 
@@ -136,36 +146,38 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
     }
 
     override func keyDown(with event: NSEvent) {
-        if event.keyCode == 53 {
-            orderOut(nil)
-            return
-        }
-
-        let currentRow = selectedIndex >= 0 ? selectedIndex : tableView.clickedRow
-        let entryCount = filteredEntries.count
-
         switch event.keyCode {
+        case 53:
+            orderOut(nil)
         case 126:
-            if entryCount > 0 {
-                selectedIndex = currentRow > 0 ? currentRow - 1 : entryCount - 1
-                tableView.scrollRowToVisible(selectedIndex)
-                tableView.reloadData()
-            }
+            moveSelection(down: false)
         case 125:
-            if entryCount > 0 {
-                selectedIndex = selectedIndex < entryCount - 1 ? selectedIndex + 1 : 0
-                tableView.scrollRowToVisible(selectedIndex)
-                tableView.reloadData()
-            }
+            moveSelection(down: true)
         case 36:
-            if selectedIndex >= 0 && selectedIndex < entryCount {
-                let entry = filteredEntries[selectedIndex]
-                if let originalIndex = store.entries.firstIndex(where: { $0.id == entry.id }) {
-                    pasteByIndex(originalIndex)
-                }
-            }
+            pasteSelectedEntry()
         default:
             super.keyDown(with: event)
+        }
+    }
+
+    private func moveSelection(down: Bool) {
+        let entryCount = filteredEntries.count
+        guard entryCount > 0 else { return }
+
+        if down {
+            selectedIndex = selectedIndex < entryCount - 1 ? selectedIndex + 1 : 0
+        } else {
+            selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : entryCount - 1
+        }
+        tableView.scrollRowToVisible(selectedIndex)
+        tableView.reloadData()
+    }
+
+    private func pasteSelectedEntry() {
+        guard selectedIndex >= 0, selectedIndex < filteredEntries.count else { return }
+        let entry = filteredEntries[selectedIndex]
+        if let originalIndex = store.entries.firstIndex(where: { $0.id == entry.id }) {
+            pasteByIndex(originalIndex)
         }
     }
 
@@ -205,18 +217,13 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
         searchField.action = #selector(searchFieldChanged)
         searchField.autoresizingMask = [.width, .minYMargin]
         searchField.onArrowDown = { [weak self] in
-            guard let self = self, !self.filteredEntries.isEmpty else { return }
-            self.selectedIndex = 0
-            self.tableView.scrollRowToVisible(self.selectedIndex)
-            self.tableView.reloadData()
-            self.makeFirstResponder(self)
+            self?.moveSelection(down: true)
         }
         searchField.onArrowUp = { [weak self] in
-            guard let self = self, !self.filteredEntries.isEmpty else { return }
-            self.selectedIndex = self.filteredEntries.count - 1
-            self.tableView.scrollRowToVisible(self.selectedIndex)
-            self.tableView.reloadData()
-            self.makeFirstResponder(self)
+            self?.moveSelection(down: false)
+        }
+        searchField.onReturn = { [weak self] in
+            self?.pasteSelectedEntry()
         }
         containerView.addSubview(searchField)
 
