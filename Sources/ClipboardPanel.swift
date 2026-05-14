@@ -374,10 +374,7 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
         guard row >= 0, row < filteredEntries.count else { return }
 
         selectedIndex = -1
-        let entry = filteredEntries[row]
-        if let originalIndex = store.entries.firstIndex(where: { $0.id == entry.id }) {
-            pasteByIndex(originalIndex)
-        }
+        pasteByIndex(row)
     }
 
     func pasteByIndex(_ index: Int) {
