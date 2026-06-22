@@ -117,6 +117,8 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
     private var selectedIndex: Int = -1
     private var isDarkMode: Bool = false
     private var filteredEntries: [ClipboardEntry] = []
+    var onPanelShow: (() -> Void)?
+    var onPanelHide: (() -> Void)?
 
     init(store: ClipboardStore) {
         self.store = store
@@ -179,6 +181,11 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
         if let originalIndex = store.entries.firstIndex(where: { $0.id == entry.id }) {
             pasteByIndex(originalIndex)
         }
+    }
+
+    override func orderOut(_ sender: Any?) {
+        super.orderOut(sender)
+        onPanelHide?()
     }
 
     override var canBecomeKey: Bool {
@@ -334,6 +341,7 @@ class ClipboardPanel: NSPanel, NSTableViewDataSource, NSTableViewDelegate {
 
         makeKeyAndOrderFront(nil)
         makeFirstResponder(searchField)
+        onPanelShow?()
     }
 
     @objc private func clearAll() {

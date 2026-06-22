@@ -30,6 +30,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         hotkeyManager.registerHotkeys()
 
+        clipboardPanel.onPanelShow = { [weak self] in
+            self?.hotkeyManager.registerNumberHotkeys()
+        }
+        clipboardPanel.onPanelHide = { [weak self] in
+            self?.hotkeyManager.unregisterNumberHotkeys()
+        }
+
         // Check for accessibility permissions
         checkAccessibilityPermissions()
     }
